@@ -11,6 +11,7 @@ struct MenuBarView: View {
     @Environment(\.openWindow) var openWindow
 
     @State var timeHandler = TimeHandler.shared
+    @State var settings = Settings.shared
     @State private var localSelectedTimer: TimerObject = TimerObject(name: "", startTime: Date(), endTime: Date())
 
     var body: some View {
@@ -30,6 +31,7 @@ struct MenuBarView: View {
             }
             .buttonStyle(.plain)
             Divider()
+            Toggle("Open at Login", isOn: $settings.launchAtStartup)
             Picker("Display Style", selection: $timeHandler.displayStyle) {
                 Text("Duration")
                     .tag(TimeDisplayStyles.duration)
