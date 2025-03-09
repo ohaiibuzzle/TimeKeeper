@@ -44,7 +44,7 @@ func createWeeklyTimer() -> TimerObject {
 func createDailyTimer() -> TimerObject {
     let specialUUID = UUID(uuidString: "00000000-0000-0000-0000-000000000003")!
     let beginningOfDay = Calendar.current.startOfDay(for: Date())
-    let timer = TimerObject(id: specialUUID, name: "Today", startTime: beginningOfDay, endTime: beginningOfDay.addingTimeInterval(86400))
+    let timer = TimerObject(id: specialUUID, name: "Today", startTime: beginningOfDay, endTime: beginningOfDay.addingTimeInterval(86399))
 
     return timer
 }

@@ -31,7 +31,21 @@ struct TimerObject: Identifiable, Hashable, Codable {
         let hours = Int((timeLeft.truncatingRemainder(dividingBy: 86400)) / 3600)
         let minutes = Int((timeLeft.truncatingRemainder(dividingBy: 3600)) / 60)
         let seconds = Int(timeLeft.truncatingRemainder(dividingBy: 60))
-        return String("\(days):\(hours):\(minutes):\(seconds) left of \(name)")
+
+        var result = ""
+        if days > 0 {
+            result += String(days) + "d "
+        }
+        if hours > 0 {
+            result += String(hours) + "h "
+        }
+        if minutes > 0 {
+            result += String(minutes) + "m "
+        }
+        if seconds > 0 {
+            result += String(seconds) + "s "
+        }
+        return result + "left of \(name)"
     }
 
     func getHumanReadablePercent() -> String {
@@ -56,13 +70,17 @@ struct TimerObject: Identifiable, Hashable, Codable {
     }
 
     private func resetTransparentTimers() {
-        var newTransparentTimers = [TimerObject]()
-        newTransparentTimers.append(createYearlyTimer())
-        newTransparentTimers.append(createMonthlyTimer())
-        newTransparentTimers.append(createWeeklyTimer())
-        newTransparentTimers.append(createDailyTimer())
-        
-        transparentTimers = newTransparentTimers
+        Task.detached() {
+            var newTransparentTimers = [TimerObject]()
+            newTransparentTimers.append(createYearlyTimer())
+            newTransparentTimers.append(createMonthlyTimer())
+            newTransparentTimers.append(createWeeklyTimer())
+            newTransparentTimers.append(createDailyTimer())
+            
+            Task {@MainActor in
+                self.transparentTimers = newTransparentTimers
+            }
+        }
     }
 
     private var transparentTimers: [TimerObject] = []
@@ -110,9 +128,13 @@ struct TimerObject: Identifiable, Hashable, Codable {
 
     func tick() {
         if let selectedTimer = selectedTimer {
-            StatusBarStates.shared.statusText = displayStyle == .duration ?
-            selectedTimer.getHumanReadableTime() :
-            selectedTimer.getHumanReadablePercent()
+            Task.detached { [self] in
+                let displayText = displayStyle == .duration ? selectedTimer.getHumanReadableTime() : selectedTimer.getHumanReadablePercent()
+                
+                Task { @MainActor in
+                    StatusBarStates.shared.statusText = displayText
+                }
+            }
         } else {
             if timers.isEmpty {
                 StatusBarStates.shared.statusText = "No timers"
@@ -134,7 +156,9 @@ struct TimerObject: Identifiable, Hashable, Codable {
 
     func saveTimers() {
         // Only save user timers
-        let data = try! JSONEncoder().encode(userTimers)
-        UserDefaults.standard.set(data, forKey: "timers")
+        Task.detached {
+            let data = try! JSONEncoder().encode(self.userTimers)
+            UserDefaults.standard.set(data, forKey: "timers")
+        }
     }
 }
