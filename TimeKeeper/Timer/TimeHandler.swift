@@ -40,30 +40,44 @@ struct TimerObject: Identifiable, Hashable, Codable {
     }
 }
 
-enum TimeDisplayStyles: String {
-    case duration
-    case percentage
-}
-
 @Observable class TimeHandler {
     static let shared = TimeHandler()
 
     private init() {
         // Add the rest
-        if let data = UserDefaults.standard.data(forKey: "timers") {
-            let decoded = try! JSONDecoder().decode([TimerObject].self, from: data)
-            timers = decoded
+        if let timers = UserDefaults.standard.data(forKey: "timers") {
+            if let decodedTimers = try? JSONDecoder().decode([TimerObject].self, from: timers) {
+                userTimers = decodedTimers
+            }
         }
 
-        let timerUUID = UUID(uuidString: "00000000-0000-0000-0000-000000000000") // Special static UUID
-        let currentYear = Calendar.current.component(.year, from: Date())
-        let jan1 = Calendar.current.date(from: DateComponents(year: currentYear, month: 1, day: 1))!
-        let jan1NextYear = Calendar.current.date(from: DateComponents(year: currentYear + 1, month: 1, day: 1))!
-        let timer = TimerObject(id: timerUUID!, name: "\(currentYear)", startTime: jan1, endTime: jan1NextYear)
-        addTimer(timer: timer)
+        // Add transparent timers
+        resetTransparentTimers()
     }
 
-    var timers: [TimerObject] = []
+    private func resetTransparentTimers() {
+        var newTransparentTimers = [TimerObject]()
+        newTransparentTimers.append(createYearlyTimer())
+        newTransparentTimers.append(createMonthlyTimer())
+        newTransparentTimers.append(createWeeklyTimer())
+        newTransparentTimers.append(createDailyTimer())
+        
+        transparentTimers = newTransparentTimers
+    }
+
+    private var transparentTimers: [TimerObject] = []
+    private var userTimers: [TimerObject] = []
+
+    var timers: [TimerObject] {
+        get {
+            return userTimers + transparentTimers
+        }
+        set {
+            userTimers = newValue
+            saveTimers()
+        }
+    }
+
     var selectedTimer: TimerObject? {
         get {
             let uuidString = UserDefaults.standard.string(forKey: "selectedTimer")
@@ -85,18 +99,12 @@ enum TimeDisplayStyles: String {
     }
 
     func addTimer(timer: TimerObject) {
-        timers.append(timer)
+        userTimers.append(timer)
         saveTimers()
     }
 
     func removeTimer(timer: TimerObject) {
-        if timer.id == UUID(uuidString: "00000000-0000-0000-0000-000000000000") {
-            return
-        }
-        timers.removeAll { $0.id == timer.id }
-        if selectedTimer?.id == timer.id {
-            selectedTimer = nil
-        }
+        userTimers.removeAll { $0.id == timer.id }
         saveTimers()
     }
 
@@ -114,15 +122,19 @@ enum TimeDisplayStyles: String {
 
         for timer in timers {
             if timer.timeLeft() <= 0 {
+                // If the timer is in the Transparent timer group, reset the whole group instead
+                if transparentTimers.contains(timer) {
+                    resetTransparentTimers()
+                    return
+                }
                 removeTimer(timer: timer)
             }
         }
     }
 
     func saveTimers() {
-        // Remove the yearly timer
-        let saveTimers = timers.filter { $0.id != UUID(uuidString: "00000000-0000-0000-0000-000000000000") }
-        let data = try! JSONEncoder().encode(saveTimers)
+        // Only save user timers
+        let data = try! JSONEncoder().encode(userTimers)
         UserDefaults.standard.set(data, forKey: "timers")
     }
 }
