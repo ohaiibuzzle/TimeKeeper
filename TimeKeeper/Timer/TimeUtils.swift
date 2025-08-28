@@ -34,9 +34,8 @@ func createMonthlyTimer() -> TimerObject {
 
 func createWeeklyTimer() -> TimerObject {
     let specialUUID = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!
-    let currentWeek = Calendar.current.component(.weekOfYear, from: Date())
-    let firstDayOfWeek = Calendar.current.date(from: DateComponents(year: Calendar.current.component(.year, from: Date()), weekday: 1, weekOfYear: currentWeek))!
-    let lastDayOfWeek = Calendar.current.date(byAdding: .weekOfYear, value: 1, to: firstDayOfWeek)!.addingTimeInterval(-1)
+    let firstDayOfWeek = Calendar.current.date(from: Calendar.current.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date()))!
+    let lastDayOfWeek = Calendar.current.date(byAdding: .day, value: 6, to: firstDayOfWeek)!.addingTimeInterval(-1)
     let timer = TimerObject(id: specialUUID, name: "Week", startTime: firstDayOfWeek, endTime: lastDayOfWeek)
     return timer
 }
